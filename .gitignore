@@ -1,0 +1,6 @@
+# gitignore for a rust proyect with wasm-pack
+target/
+pkg/
+Cargo.lock
+.idea
+.vscode

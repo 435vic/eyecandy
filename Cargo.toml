@@ -1,0 +1,28 @@
+[package]
+name = "eyecandy"
+version = "0.1.0"
+authors = ["Victor <vico@boredvico.dev>"]
+description = "Cool visualizations with Rust, powered by three-d and WebAssembly"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name="eyecandy-bin"
+path="src/bin/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+cgmath = "0.18.0"
+env_logger = "0.10.0"
+fast-math = "0.1.1"
+log = "0.4.20"
+three-d = "0.16.4"
+winit = "0.28.7"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+web-sys = { version = "0.3.64", features = ["HtmlCanvasElement"] }
+console_error_panic_hook = { version = "0.1.7" }
+console_log = "1.0.0"
+wasm-bindgen = "0.2.87"
