@@ -5,7 +5,7 @@ use three_d::SurfaceSettings;
 use winit::event_loop::EventLoop;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
-use crate::demo::run_demo;
+use crate::rubik;
 use log::info;
 
 pub mod window;
@@ -35,7 +35,8 @@ pub fn bind(canvas: HtmlCanvasElement) -> Result<(), JsValue> {
         &event_loop,
         SurfaceSettings::default()
     );
-    let closure = run_demo(&window);
+    info!("starting render loop");
+    let closure = rubik::run(&window);
     window.start(event_loop, closure);
     Ok(())
 }

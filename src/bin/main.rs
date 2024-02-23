@@ -1,5 +1,5 @@
 use three_d::{Window, WindowSettings};
-use eyecandy::demo::run_demo;
+use eyecandy::rubik;
 
 use env_logger::Env;
 
@@ -13,6 +13,6 @@ pub fn main() {
         max_size: Some((800, 600)),
         ..Default::default()
     }).unwrap();
-    let closure = run_demo(&window);
+    let closure = rubik::run(&window);
     window.render_loop(closure);
 }

@@ -1,6 +1,5 @@
 pub mod animation;
 pub mod control;
-pub mod demo;
 pub mod rubik;
 pub mod wasm;
 
