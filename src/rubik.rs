@@ -1,5 +1,7 @@
 use crate::control::{SmoothOrbitControl, SmoothOrbitControlSettings};
-use crate::WindowLike;
+use crate::rubik::geometry::{cube_mesh, rubik_model};
+use crate::{rubik, WindowLike};
+
 use three_d::*;
 
 mod geometry;
@@ -77,14 +79,14 @@ pub fn run(window: &impl WindowLike) -> impl 'static + FnMut(FrameInput) -> Fram
     );
 
     const FACES: [Srgba; 6] = [
-        Srgba::new(248, 214, 73, 255),
-        Srgba::new(255, 255, 255, 255),
-        Srgba::new(167, 41, 55, 255),
-        Srgba::new(235, 99, 45, 255),
-        Srgba::new(31, 68, 166, 255),
-        Srgba::new(70, 152, 81, 255),
+        Srgba::new(31, 68, 166, 255), // blue
+        Srgba::new(248, 214, 73, 255), //yellow
+        Srgba::new(167, 41, 55, 255), // red
+        Srgba::new(255, 255, 255, 255), // white
+        Srgba::new(70, 152, 81, 255), // green
+        Srgba::new(235, 99, 45, 255), // orange
     ];
-    let mut vec_colors = vec![Srgba::RED; 36];
+    let mut vec_colors = vec![Srgba::WHITE; 36];
     for i in 0..6 {
         let face_color = FACES[i];
         for j in 0..6 {
@@ -92,19 +94,26 @@ pub fn run(window: &impl WindowLike) -> impl 'static + FnMut(FrameInput) -> Fram
         }
     }
 
-    let mesh = CpuMesh {
-        positions: CpuMesh::cube().positions,
-        colors: Some(vec_colors),
-        ..Default::default()
-    };
+    // let mut mesh = CpuMesh {
+    //     positions: cube_mesh().positions,
+    //     colors: Some(vec_colors),
+    //     ..Default::default()
+    // };
 
+    let mut mesh = cube_mesh();
+    mesh.colors = Some(vec_colors);
+        
     let model = Gm::new(Mesh::new(&context, &mesh), ColorMaterial::default());
+
+    let rubik = Model::<ColorMaterial>::new(&context, &rubik_model(0.98)).unwrap();
+
+    let axes = Axes::new(&context, 0.08, 5.0);
 
     move |mut frame_input| {
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 0.8, 1.0))
-            .render(&camera, &model, &[]);
+            .render(&camera, rubik.into_iter().chain(&axes), &[]);
         let dt: f32 = frame_input.elapsed_time as f32;
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events, dt);
