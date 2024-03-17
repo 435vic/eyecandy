@@ -136,10 +136,17 @@ pub fn run(window: &impl WindowLike) -> impl 'static + FnMut(FrameInput) -> Fram
     // y axis green
     // z axis blue
     let axes = Axes::new(&context, 0.08, 5.0);
-
-    let cooler_rubik = super::Cube::solved(&context);
+    let mut cooler_rubik = super::Cube::solved(&context);
+    let _changed = cooler_rubik.face(4).map(|piece| {
+        let result = piece.rotate(super::ROT_XY_CW).unwrap();
+        println!("{:?}", result);
+        result
+    }).collect::<Vec<_>>();
+    
 
     move |mut frame_input| {
+        cooler_rubik._dbg_rotate_face_model(0, radians(frame_input.accumulated_time as f32 * 0.001)).unwrap();
+
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.2, 0.2, 0.2, 0.8, 1.0))
