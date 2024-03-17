@@ -1,19 +1,10 @@
 use std::collections::VecDeque;
 
-use cgmath::{Rad, SquareMatrix, Transform};
+use cgmath::{Rad, SquareMatrix};
 pub use graphics::run;
-use log::{debug, trace};
+use log::trace;
 use three_d::{ColorMaterial, Geometry, Gm, Mat3, Mat4, Mesh, Object, Srgba, Vec3};
 mod graphics;
-
-// const FACE_ORDER: [Color; 6] = [
-//     Color::Blue,
-//     Color::Yellow,
-//     Color::Red,
-//     Color::White,
-//     Color::Green,
-//     Color::Orange,
-// ];
 
 const COLORS: [Srgba; 6] = [
     Srgba::new(31, 68, 166, 255), // blue
@@ -270,8 +261,7 @@ impl Cube {
         })
     }
 
-    // TODO: remove crate visibility
-    pub(crate) fn face_iter(&mut self, face: usize) -> impl Iterator<Item=&mut Piece> {
+    fn face_iter(&mut self, face: usize) -> impl Iterator<Item=&mut Piece> {
         let face_cis: Vec<&usize> = FACELETS.iter().skip(face * 9).take(9).collect();
         self.pieces.iter_mut()
             .filter(move |p| face_cis.contains(&&p.cubelet()))
@@ -284,19 +274,6 @@ impl Cube {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap()
-    }
-
-    pub(crate) fn _dbg_rotate_face_model(&mut self, face: usize, amt: Rad<f32>) -> Result<(), String> {
-        let rot = match face {
-            0 => Mat4::from_angle_x(amt),
-            1 => Mat4::from_angle_y(amt),
-            2 => Mat4::from_angle_z(amt),
-            _ => return Err(format!("Invalid face {}", face))
-        };
-        for cubelet in self.face_iter(face) {
-            cubelet.gm.set_transformation(rot);
-        }
-        Ok(())
     }
 
     fn rotate_face(&mut self, face: usize, mat: Mat3) {

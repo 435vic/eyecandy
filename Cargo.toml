@@ -1,6 +1,6 @@
 [package]
 name = "eyecandy"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Victor <vico@boredvico.dev>"]
 description = "Cool visualizations with Rust, powered by three-d and WebAssembly"
 edition = "2021"
