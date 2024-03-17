@@ -3,6 +3,8 @@ use crate::control::{SmoothOrbitControl, SmoothOrbitControlSettings};
 use crate::WindowLike;
 use three_d::*;
 
+use super::Move;
+
 /// Same as CpuMesh::cube() but the order of faces is changed to match my internal order
 /// makes it easier to compute colors for the faces and also cube turns.
 pub fn cube_mesh() -> CpuMesh {
@@ -137,16 +139,17 @@ pub fn run(window: &impl WindowLike) -> impl 'static + FnMut(FrameInput) -> Fram
     // z axis blue
     let axes = Axes::new(&context, 0.08, 5.0);
     let mut cooler_rubik = super::Cube::solved(&context);
-    let _changed = cooler_rubik.face(4).map(|piece| {
-        let result = piece.rotate(super::ROT_XY_CW).unwrap();
-        println!("{:?}", result);
-        result
-    }).collect::<Vec<_>>();
+    cooler_rubik.queue([Move::L, Move::F, Move::L, Move::UP].into_iter());
+    // let _changed = cooler_rubik.face(4).map(|piece| {
+    //     let result = piece.rotate(super::ROT_XY_CW).unwrap();
+    //     println!("{:?}", result)
+    //     result
+    // }).collect::<Vec<_>>();
     
 
     move |mut frame_input| {
-        cooler_rubik._dbg_rotate_face_model(0, radians(frame_input.accumulated_time as f32 * 0.001)).unwrap();
-
+        // cooler_rubik._dbg_rotate_face_model(0, radians(frame_input.accumulated_time as f32 * 0.001)).unwrap();
+        cooler_rubik.animate(frame_input.accumulated_time as f32);
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.2, 0.2, 0.2, 0.8, 1.0))
