@@ -3,6 +3,10 @@ use cgmath::{Angle, InnerSpace, Quaternion, Rad, Vector3};
 use std::f32::consts::PI;
 use three_d::Camera;
 
+pub fn ease(t: f32, a: f32) -> f32 {
+    t.powf(a) / (t.powf(a) + (1.0 - t).powf(a))
+}
+
 ///
 /// Smooth out an arbitrary value using second order dynamics.
 ///

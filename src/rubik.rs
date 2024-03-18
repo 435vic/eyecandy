@@ -3,7 +3,9 @@ use std::collections::VecDeque;
 use cgmath::{Rad, SquareMatrix};
 pub use graphics::run;
 use log::trace;
-use three_d::{ColorMaterial, Geometry, Gm, Mat3, Mat4, Mesh, Object, Srgba, Vec3};
+use three_d::{ColorMaterial, CpuMesh, Geometry, Gm, Mat3, Mat4, Mesh, Object, Srgba, Vec3};
+
+use self::graphics::RubikMaterial;
 mod graphics;
 
 const COLORS: [Srgba; 6] = [
@@ -62,12 +64,12 @@ pub const ROT_YZ_CCW: Mat3 = Mat3::new(
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Move {
-    L, LP,
-    R, RP,
-    U, UP,
-    D, DP,
-    F, FP,
-    B, BP,
+    L, LP, L2,
+    R, RP, R2,
+    U, UP, U2,
+    D, DP, D2,
+    F, FP, F2,
+    B, BP, B2,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -101,7 +103,7 @@ impl Default for Color {
     }
 }
 
-type PieceMaterial = ColorMaterial;
+type PieceMaterial = RubikMaterial;
 
 pub(crate) struct Piece {
     position: (i32, i32, i32),
@@ -117,6 +119,21 @@ pub struct Cube {
     move_start: f32,
     move_queue: VecDeque<Move>,
     move_time: f32,
+    move_slope: f32,
+}
+
+pub struct CubeAnimationOptions {
+    pub move_time: f32,
+    pub move_smoothing: f32,
+}
+
+impl Default for CubeAnimationOptions {
+    fn default() -> Self {
+        CubeAnimationOptions {
+            move_time: 1200.0,
+            move_smoothing: 2.0,
+        }
+    }
 }
 
 impl Piece {
@@ -161,12 +178,12 @@ impl Piece {
 impl Move {
     pub fn face(&self) -> usize {
         match self {
-            Move::L | Move::LP => 0,
-            Move::U | Move::UP => 1,
-            Move::F | Move::FP => 2,
-            Move::D | Move::DP => 3,
-            Move::R | Move::RP => 4,
-            Move::B | Move::BP => 5,
+            Move::L | Move::LP | Move::L2 => 0,
+            Move::U | Move::UP | Move::U2 => 1,
+            Move::F | Move::FP | Move::F2 => 2,
+            Move::D | Move::DP | Move::D2 => 3,
+            Move::R | Move::RP | Move::R2 => 4,
+            Move::B | Move::BP | Move::B2 => 5,
         }
     }
 
@@ -178,20 +195,21 @@ impl Move {
             Move::UP | Move::D => Mat4::from_angle_y(Rad(t * std::f32::consts::FRAC_PI_2)),
             Move::F | Move::BP => Mat4::from_angle_z(Rad(-t * std::f32::consts::FRAC_PI_2)),
             Move::FP | Move::B => Mat4::from_angle_z(Rad(t * std::f32::consts::FRAC_PI_2)),
+            Move::L2 => Mat4::from_angle_x(Rad(t * std::f32::consts::PI)),
+            Move::R2 => Mat4::from_angle_x(Rad(-t * std::f32::consts::PI)),
+            Move::U2 => Mat4::from_angle_y(Rad(-t * std::f32::consts::PI)),
+            Move::D2 => Mat4::from_angle_y(Rad(t * std::f32::consts::PI)),
+            Move::F2 => Mat4::from_angle_z(Rad(-t * std::f32::consts::PI)),
+            Move::B2 => Mat4::from_angle_z(Rad(t * std::f32::consts::PI)),
         }
     }
 }
 
 impl Cube {
-    pub fn from_facelet_str(fstr: String, ctx: &three_d::Context) -> Result<Cube, String> {
+    pub fn from_facelet_str(fstr: String, anim: CubeAnimationOptions, ctx: &three_d::Context) -> Result<Cube, String> {
         let mut pieces = vec![];
         for i in 0..27 {
             let position = (i as i32 / 9 - 1, 2 - (i as i32 / 3) % 3 - 1, i as i32 % 3 - 1);
-            let mut mesh = graphics::cube_mesh();
-            mesh.transform(&Mat4::from_scale(0.5)).unwrap();
-            mesh.transform(
-                &Mat4::from_translation(Vec3::new(position.0 as f32, position.1 as f32, position.2 as f32))
-            ).unwrap();
             pieces.push((position, (Color::None, Color::None, Color::None)));
         }
         for facelet in 0..54 {
@@ -222,9 +240,9 @@ impl Cube {
         let pieces = pieces.into_iter().enumerate().map(|(_i, (position, color))| {
             // let calculated_index = (position.0 + 1) * 9 + (1 - position.1) * 3 + (position.2 + 1);
             // println!("{} -> {}: {:?}, {:?}", _i, calculated_index, position, color);
-            let mut mesh = graphics::cube_mesh();
+            let mut mesh = CpuMesh::cube();
             mesh.transform(&Mat4::from_scale(0.5)).unwrap();
-            mesh.transform(&Mat4::from_scale(0.98)).unwrap();
+            // mesh.transform(&Mat4::from_scale(0.98)).unwrap();
             mesh.transform(
                 &Mat4::from_translation(Vec3::new(position.0 as f32, position.1 as f32, position.2 as f32))
             ).unwrap();
@@ -240,7 +258,8 @@ impl Cube {
                     _ => Color::None,
                 };
                 for j in 0..6 {
-                    face_colors[i * 6 + j] = face_color.into();
+                    // CpuMesh::cube() has a different face order
+                    face_colors[[5,0,3,1,4,2][i] * 6 + j] = face_color.into();
                 }
             }
             mesh.colors = Some(face_colors);
@@ -257,7 +276,8 @@ impl Cube {
             current_face: None,
             move_start: 0.0,
             move_queue: VecDeque::new(),
-            move_time: 1000.0,
+            move_time: anim.move_time,
+            move_slope: anim.move_smoothing,
         })
     }
 
@@ -288,16 +308,40 @@ impl Cube {
         match mv {
             Move::L => self.rotate_face(0, ROT_XY_CW),
             Move::LP => self.rotate_face(0, ROT_XY_CCW),
+            Move::L2 => {
+                self.rotate_face(0, ROT_XY_CW);
+                self.rotate_face(0, ROT_XY_CW);
+            },
             Move::R => self.rotate_face(4, ROT_XY_CCW),
             Move::RP => self.rotate_face(4, ROT_XY_CW),
+            Move::R2 => {
+                self.rotate_face(4, ROT_XY_CCW);
+                self.rotate_face(4, ROT_XY_CCW);
+            },
             Move::U => self.rotate_face(1, ROT_XZ_CW),
             Move::UP => self.rotate_face(1, ROT_XZ_CCW),
+            Move::U2 => {
+                self.rotate_face(1, ROT_XZ_CW);
+                self.rotate_face(1, ROT_XZ_CW);
+            },
             Move::D => self.rotate_face(3, ROT_XZ_CCW),
             Move::DP => self.rotate_face(3, ROT_XZ_CW),
+            Move::D2 => {
+                self.rotate_face(3, ROT_XZ_CCW);
+                self.rotate_face(3, ROT_XZ_CCW);
+            },
             Move::F => self.rotate_face(2, ROT_YZ_CW),
             Move::FP => self.rotate_face(2, ROT_YZ_CCW),
+            Move::F2 => {
+                self.rotate_face(2, ROT_YZ_CW);
+                self.rotate_face(2, ROT_YZ_CW);
+            },
             Move::B => self.rotate_face(5, ROT_YZ_CCW),
             Move::BP => self.rotate_face(5, ROT_YZ_CW),
+            Move::B2 => {
+                self.rotate_face(5, ROT_YZ_CCW);
+                self.rotate_face(5, ROT_YZ_CCW);
+            },
         }
     }
 
@@ -318,7 +362,7 @@ impl Cube {
                 trace!("Applied move {:?}", mv);
                 self.current_move = None;
             } else {
-                let x = elapsed / self.move_time;
+                let x = crate::animation::ease(elapsed / self.move_time, self.move_slope);
                 for ci in cface {
                     let piece = &mut self.pieces[ci];
                     piece.transform(mv.transform(x));
@@ -332,8 +376,8 @@ impl Cube {
         }
     }
 
-    pub fn solved(ctx: &three_d::Context) -> Cube {
-        Self::from_facelet_str("BBBBBBBBBYYYYYYYYYRRRRRRRRRWWWWWWWWWGGGGGGGGGOOOOOOOOO".to_string(), ctx).unwrap()
+    pub fn solved(anim: CubeAnimationOptions, ctx: &three_d::Context) -> Cube {
+        Self::from_facelet_str("BBBBBBBBBYYYYYYYYYRRRRRRRRRWWWWWWWWWGGGGGGGGGOOOOOOOOO".to_string(), anim, ctx).unwrap()
     }
 }
 
