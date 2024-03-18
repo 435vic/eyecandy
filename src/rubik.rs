@@ -3,9 +3,9 @@ use std::collections::VecDeque;
 use cgmath::{Rad, SquareMatrix};
 pub use graphics::run;
 use log::trace;
-use three_d::{ColorMaterial, CpuMesh, Geometry, Gm, Mat3, Mat4, Mesh, Object, Srgba, Vec3};
+use three_d::{ColorMaterial, CpuMesh, Geometry, Gm, Mat3, Mat4, Material, Mesh, Object, Srgba, CpuTexture, Texture2DRef, Vec3};
 
-use self::graphics::RubikMaterial;
+use self::graphics::{cube_uvs, RubikMaterial};
 mod graphics;
 
 const COLORS: [Srgba; 6] = [
@@ -241,6 +241,7 @@ impl Cube {
             // let calculated_index = (position.0 + 1) * 9 + (1 - position.1) * 3 + (position.2 + 1);
             // println!("{} -> {}: {:?}, {:?}", _i, calculated_index, position, color);
             let mut mesh = CpuMesh::cube();
+            mesh.uvs = Some(cube_uvs());
             mesh.transform(&Mat4::from_scale(0.5)).unwrap();
             // mesh.transform(&Mat4::from_scale(0.98)).unwrap();
             mesh.transform(
